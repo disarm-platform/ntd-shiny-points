@@ -14,53 +14,60 @@ dashboardPage(
       includeCSS("styles.css"),
 
              box(width = 12, 
-                    h3("NTD mapping app"), h4(p('This application is designed to help understand whether having village level
-                                              predictions of hotspots is useful to NTD programs. Given an input of infection/sero 
-                                              prevalence at villages, and locations of all other villages, the app is designed 
-                                              to automatically fit a geospatial model (see',strong('Methods'), 'tab below) using 
-                                              climatological variables (currently 
-                                              temperature, precipitation and seasonality) to provide two outputs:'),
-                                              
-                                              br(tags$ol(
-                                                tags$li("Location of likely hotspot villages and"), 
-                                                tags$li("optimal location to next visit to collect more data in
-                                              order to update your hotspot prediction map")
-                                              )),
-                                              
-                                              
-                                              p("To test the app, you can download the 
-                                              demo files below to see their structure and then upload using the upload box. 
-                                              It just needs 2 files:"),
-                                            
-                                            br(tags$ol(
-                                                 tags$li("Survey data (in this case",tags$i("S. mansoni"), "infection prevalence in Cote D'Ivoire)."), 
-                                                 tags$li("Locations of all other villages")
-                                               )),
-                                            
-                                            p('Or you can run using your own data, as long as
-                                              they are in the same format as the demo data. You also need to set the prevalence threshold to define 
-                                              a hotspot.'),
+                 column(width=12,h3("Inputs")),
+                 #    h3("NTD mapping app"), h4(p('This application is designed to help understand whether having village level
+                 #                              predictions of hotspots is useful to NTD programs. Given an input of infection/sero 
+                 #                              prevalence at villages, and locations of all other villages, the app is designed 
+                 #                              to automatically fit a geospatial model (see',strong('Methods'), 'tab below) using 
+                 #                              climatological variables (currently 
+                 #                              temperature, precipitation and seasonality) to provide two outputs:'),
+                 #                              
+                 #                              br(tags$ol(
+                 #                                tags$li("Location of likely hotspot villages and"), 
+                 #                                tags$li("optimal location to next visit to collect more data in
+                 #                              order to update your hotspot prediction map")
+                 #                              )),
+                 #                              
+                 #                              
+                 #                              p("To test the app, you can download the 
+                 #                              demo files below to see their structure and then upload using the upload box. 
+                 #                              It just needs 2 files:"),
+                 #                            
+                 #                            br(tags$ol(
+                 #                                 tags$li("Survey data (in this case",tags$i("S. mansoni"), "infection prevalence in Cote D'Ivoire)."), 
+                 #                                 tags$li("Locations of all other villages")
+                 #                               )),
+                 #                            
+                 #                            p('Or you can run using your own data, as long as
+                 #                              they are in the same format as the demo data. You also need to set the prevalence threshold to define 
+                 #                              a hotspot.'),
+                 # 
+                 #                            br('Once the data are uploaded, the two tabs below show the two outputs. The', strong('Hotspots'), 'tab
+                 #                              allows hotspot villages to be identified. The ', strong('Adaptive sampling'), 
+                 #                              'tab provides guidance on where to survey next in order to survey 
+                 #                              a village that will provide the most valuable data.')),
+                 # 
+                 #                             
+                 # 
+                 # helpText(a("Demo survey data",     
+                 #            href="https://www.dropbox.com/s/dxpdwvqez2pvszm/Sm_cdi_observations.csv?dl=1"),
+                 #          target="_blank"), 
+                 # 
+                 # helpText(a("Demo village data",     
+                 #            href="https://www.dropbox.com/s/tn4lmpvlgubtrey/Sm_cdi_villages.csv?dl=1"),
+                 #          target="_blank"), 
                  
-                                            br('Once the data are uploaded, the two tabs below show the two outputs. The', strong('Hotspots'), 'tab
-                                              allows hotspot villages to be identified. The ', strong('Adaptive sampling'), 
-                                              'tab provides guidance on where to survey next in order to survey 
-                                              a village that will provide the most valuable data.')),
+                        column(width=4,
+                               sliderInput("threshold", "Set hotspot prevalence threshold",
+                                    min=0.1, max=100, value=10, round=TRUE)),
                  
-                                             
-                 
-                 helpText(a("Demo survey data",     
-                            href="https://www.dropbox.com/s/dxpdwvqez2pvszm/Sm_cdi_observations.csv?dl=1"),
-                          target="_blank"), 
-                 
-                 helpText(a("Demo village data",     
-                            href="https://www.dropbox.com/s/tn4lmpvlgubtrey/Sm_cdi_villages.csv?dl=1"),
-                          target="_blank"), 
-                 
-                        sliderInput("threshold", "Set hotspot prevalence threshold",
-                                    min=0, max=100, value=10, round=TRUE, width = 500),
-                 
-                        fileInput("File", "Survey data", width = "20%"),
-                        fileInput("predFile", "Villages", width = "20%")),
+                        column(width=4,
+                        fileInput("File", "Survey data")),
+                        column(width=4,
+                        fileInput("predFile", "Prediction locations")),
+                        
+                        column(width=12, h3("Outputs"),
+                        downloadButton("downloadData", "Download predictions"))),
             
              
              tabBox(width = 12, height = 1200,
@@ -121,8 +128,11 @@ dashboardPage(
                                        of 10% is more likely that a prevalence of 5%. By moving the slider, you can estimate the probability that 
                                        prevalence exceeds that value.'),
                                     
-
-                                 sliderInput("post_threshold", "Set hotspot prevalence threshold", min=0, max=20, value=10),
+                                  
+                                 br(column(width=1,""),
+                                    column(width=9, 
+                                           offest=1,
+                                           sliderInput("post_threshold", "Set hotspot prevalence threshold", min=0, max=20, value=10))),
                                  plotOutput("posterior"),
                                  width = 12),
                              

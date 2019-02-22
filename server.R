@@ -152,12 +152,12 @@ shinyServer(function(input, output) {
     }
     #uncertainty <- abs(map_data()$sp_points_df$probability - 0.5)
     output_table <-
-      map_data()$sp_points_df@data[rev(order(map_data()$sp_points_df$probability)),][1:5, 1:2]
+      map_data()$sp_points_df@data[rev(order(map_data()$sp_points_df$probability)),][, 1:2]
     output_table[, 2] <- round(output_table[, 2], 2)
     names(output_table) <-
-      c("Village ID", "Probability of being a hotspot")
+      c("Location ID", "Probability of being a hotspot")
     DT::datatable(output_table,
-                  options = list(pageLength = 15),
+                  options = list(pageLength = 10),
                   rownames = F)
   })
   
@@ -170,7 +170,7 @@ shinyServer(function(input, output) {
     hotspot_table <- map_data()$sp_points_df@data[hotspot_index, 1:2]
     hotspot_table[, 2] <- round(hotspot_table[, 2], 2)
     names(hotspot_table) <-
-      c("Village ID", "Probability of being a hotspot")
+      c("Location ID", "Probability of being a hotspot")
     DT::datatable(
       hotspot_table,
       options = list(pageLength = 10,
@@ -272,7 +272,7 @@ shinyServer(function(input, output) {
       ) %>%
       
       addLayersControl(
-        overlayGroups = c("Villages to sample", "Survey points"),
+        overlayGroups = c("Survey points"),
         options = layersControlOptions(collapsed = F)
       )
     
@@ -284,14 +284,14 @@ shinyServer(function(input, output) {
     threshold <- input$post_threshold
     
     set.seed(1981)
-    sample <- rbinom(500, 100, 0.10)
+    sample <- rbinom(1000, 100, 0.10)
     binom <- density(sample,0.7)
     binom <- data.frame(x=binom$x, y=binom$y)
     plot(binom$x, binom$y, type="l", lwd=4, axes=F, cex.lab=1.5,
          xlab="Infection prevalence (%)",ylab="Relative probability")
     axis(1,xlim=c(0,25))
     text(17,0.11, paste0("Probability that prevalence exceeds ", 
-                       threshold,"% is ", round(mean(sample>=threshold),2)),cex=1.5)
+                       threshold,"% is ", round(mean(sample>=threshold),3)),cex=1.5)
     polygon(c(binom$x,min(binom$x)), c(binom$y,binom$y[1]),
             col="gray80",
             border=NA)
@@ -315,11 +315,19 @@ shinyServer(function(input, output) {
     list(src = "logo_transparent.png")
   }, deleteFile = FALSE)
   
-  #output$Instructions <- textOutput("File with 'lng' and 'lat' columns")
   
-  output$EE_logo <- renderImage({
-    # Return a list containing the filename
-    list(src = "GoogleEarthEngine_logo.png")
-  }, deleteFile = FALSE)
+  # Handle downloads
+  output$downloadData <- downloadHandler(
+    filename = function() {
+      paste("predictions.csv")
+    },
+    content = function(file) {
+      download_table <- map_data()$sp_points_df@data
+      names(download_table)[2] <- "Hotspot probability" 
+      write.csv(map_data()$sp_points_df@data, file, row.names = FALSE)
+    }
+  )
   
 })
+
+
