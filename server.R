@@ -14,10 +14,8 @@ library(ggplot2)
 library(geoR)
 library(sf)
 
-source("buff_voronoi.R")
 
 # Define map
-
 map <- leaflet(max) %>%
   addTiles(
     "https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}{r}.png"
@@ -120,23 +118,12 @@ shinyServer(function(input, output) {
                    result <<-
                      rjson::fromJSON(json_response) # this will put the response in a useful format
                    
-                   # Create buffered polygons
-                   #st_geometry(pred_points) <- st_geometry(st_as_sf(pred_points,
-                  #                                                  coords = c("lng", "lat")))
-                   
-                   sp_Polygons <-
-                     # buff_voronoi_test(
-                     #   data.frame(
-                     #     x = pred_points$lng,
-                     #     y = pred_points$lat,
-                     #     id = pred_points$ID
-                     #   ),
-                     #   w_buff = 0.15
-                     # )
+
+                   # Define SpatialPoints
+                   sp_points <-
                      SpatialPointsDataFrame(pred_points[,c("lng", "lat")],
                                             data.frame(id = pred_points$ID))
-                     #sp_Polygons <- st_buffer(sp_Polygons, 0.1)
-                   
+
                    
                    # create spdf
                    spdf_data <-
@@ -147,15 +134,13 @@ shinyServer(function(input, output) {
                      )
                    
                    # Merge
-                   sp_Polygons_df <- merge(sp_Polygons, spdf_data, by="id")
+                   sp_points_df <- merge(sp_points, spdf_data, by="id")
                    
                    return(
                      list(
                        points = points,
                        pred_points = pred_points,
-                       #sp_Polygons = sp_Polygons,
-                       #spdf_data = spdf_data
-                       sp_Polygons_df = sp_Polygons_df
+                       sp_points_df = sp_points_df
                      )
                    )
                  })
@@ -165,9 +150,9 @@ shinyServer(function(input, output) {
     if (is.null(map_data())) {
       return(NULL)
     }
-    uncertainty <- abs(map_data()$sp_Polygons_df$probability - 0.5)
+    #uncertainty <- abs(map_data()$sp_points_df$probability - 0.5)
     output_table <-
-      map_data()$sp_Polygons_df@data[order(uncertainty),][1:5, 1:2]
+      map_data()$sp_points_df@data[rev(order(map_data()$sp_points_df$probability)),][1:5, 1:2]
     output_table[, 2] <- round(output_table[, 2], 2)
     names(output_table) <-
       c("Village ID", "Probability of being a hotspot")
@@ -181,8 +166,8 @@ shinyServer(function(input, output) {
       return(NULL)
     }
     hotspot_index <-
-      which(map_data()$sp_Polygons_df$probability >= input$prob_threshold / 100)
-    hotspot_table <- map_data()$sp_Polygons_df@data[hotspot_index, 1:2]
+      which(map_data()$sp_points_df$probability >= input$prob_threshold / 100)
+    hotspot_table <- map_data()$sp_points_df@data[hotspot_index, 1:2]
     hotspot_table[, 2] <- round(hotspot_table[, 2], 2)
     names(hotspot_table) <-
       c("Village ID", "Probability of being a hotspot")
@@ -209,33 +194,20 @@ shinyServer(function(input, output) {
     
     labels <- sprintf(
       "<strong>%s</strong><br/>Hotspot probability %g",
-      map_data()$sp_Polygons_df$id,
-      round(map_data()$sp_Polygons_df$probability, 3)
+      map_data()$sp_points_df$id,
+      round(map_data()$sp_points_df$probability, 3)
     ) %>% lapply(htmltools::HTML)
     
     # Map
     hotspot_class <-
-      ifelse(map_data()$sp_Polygons_df$probability >= input$prob_threshold / 100,
+      ifelse(map_data()$sp_points_df$probability >= input$prob_threshold / 100,
              1,
              0)
+    
     map %>% 
       
-    #   addPolygons(
-    #   data = map_data()$sp_Polygons_df,
-    #   color = pal(hotspot_class),
-    #   fillOpacity = 0.6,
-    #   weight = 1,
-    #   highlightOptions = highlightOptions(
-    #     weight = 5,
-    #     color = "#666",
-    #     bringToFront = TRUE,
-    #     fillOpacity = 0.7
-    #   ),
-    #   label = labels
-    # ) %>%
-    
     addCircleMarkers(    
-        data = map_data()$sp_Polygons_df,
+        data = map_data()$sp_points_df,
         color = pal(hotspot_class),
         fillOpacity = 0.6,
         weight = 1,
@@ -267,48 +239,20 @@ shinyServer(function(input, output) {
                    seq(0, 1, 0.01))
     
     # define uncertainty
-    uncertainty <- abs(map_data()$sp_Polygons_df$probability - 0.5)
+    uncertainty <- abs(map_data()$sp_points_df$probability - 0.5)
     
     # map
     labels <- sprintf(
       "<strong>%s</strong><br/>Hotspot probability %g",
-      map_data()$sp_Polygons_df$id,
-      round(map_data()$sp_Polygons_df$probability, 3)
+      map_data()$sp_points_df$id,
+      round(map_data()$sp_points_df$probability, 3)
     ) %>% lapply(htmltools::HTML)
     
     map %>% 
-    #   addPolygons(
-    #   data = map_data()$sp_Polygons_df,
-    #   color = pal(map_data()$sp_Polygons_df$probability),
-    #   fillOpacity = 0.6,
-    #   weight = 1,
-    #   highlightOptions = highlightOptions(
-    #     weight = 5,
-    #     color = "#666",
-    #     bringToFront = TRUE,
-    #     fillOpacity = 0.7
-    #   ),
-    #   label = labels
-    # ) %>%
-      
-      # addPolygons(
-      #   data = map_data()$sp_Polygons_df[order(uncertainty)[1:5],],
-      #   col = "deeppink",
-      #   opacity = 1,
-      #   fillOpacity = 0.1,
-      #   group = "Villages to sample",
-      #   highlightOptions = highlightOptions(
-      #     weight = 5,
-      #     color = "#666",
-      #     bringToFront = TRUE,
-      #     fillOpacity = 0.7
-      #   ),
-      #   label = labels[order(uncertainty)[1:5]]
-      # ) %>%
       
       addCircleMarkers(    
-        data = map_data()$sp_Polygons_df,
-        color = pal(map_data()$sp_Polygons_df$probability),
+        data = map_data()$sp_points_df,
+        color = pal(map_data()$sp_points_df$probability),
         fillOpacity = 0.6,
         weight = 1,
         radius = 4) %>%
@@ -316,11 +260,6 @@ shinyServer(function(input, output) {
       addCircleMarkers(
         map_data()$points$lng,
         map_data()$points$lat,
-        # popup = paste0("<p><strong>Name: </strong>", map_data()$points$ID,
-        #                                        "<br><strong>Prevalence </strong>",
-        #                                        c(map_data()$points$Npos / map_data()$points$Nex),
-        #                                        "<br><strong>N = </strong>",
-        #                                        map_data()$points$Nex),
         group = "Survey points",
         col = "black",
         radius = 2
