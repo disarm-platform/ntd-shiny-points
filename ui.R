@@ -92,13 +92,7 @@ dashboardPage(
                     tabPanel(title = strong("Adaptive sampling"),
 
                               box(h4(p('The ', strong('Adaptive sampling'), 'tab provides guidance on where to survey next in order to survey 
-                                              a village that will provide the most valuable data. In this case, the village at which the 
-                               algorithm is least certain about whether it is a hotspot or not is the most sensible location
-                               to collect more data. Research has shown that this type of adaptive sampling improves predictions 
-                                from the geospatial model.
-                                Rather than identifying the single most valuable village to visit, the 
-                               application provides 5 village to choose from. Once data at one of these 5 villages is collected
-                               the application can be updated and the hotspot and adaptive sampling maps will update.')), width = 12),
+                                              a village that will provide the most valuable data.')), width = 12),
                              
                              box(leafletOutput("prob_map", height = 800), width = 8),
                              box(DT::DTOutput('pred_table'), width = 3)),
