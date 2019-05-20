@@ -22,7 +22,8 @@ map <- leaflet(max) %>%
   )
 
 shinyServer(function(input, output) {
-  map_data <- reactive({
+  
+  map_data <- eventReactive(input$get_predictions, {
     inFile <- input$File
     inFile_pred <- input$predFile
     if (is.null(inFile))
@@ -76,29 +77,33 @@ shinyServer(function(input, output) {
                      
                    }
                    
+                   # Combine observation and prediction points
+                   # into single sf object
+                   combined_data <- data.frame(lng = c(points$lng, pred_points$lng),
+                                               lat = c(points$lat, pred_points$lat),
+                                               n_trials = c(points$Nex, rep(NA, nrow(pred_points))),
+                                               n_positive = c(points$Npos, rep(NA, nrow(pred_points))))
+                   
+                   combined_data_sf <- st_as_sf(SpatialPointsDataFrame(SpatialPoints(combined_data[,c("lng", "lat")]),
+                                                                       combined_data[,c("n_trials", "n_positive")]))
+                   
                    
                    # Prepare input as JSON
                    input_data_list <-
                      list(
-                       region_definition = list(
-                         lng = pred_points$lng,
-                         lat = pred_points$lat,
-                         id = pred_points$ID
-                       ),
-                       train_data = list(
-                         lng = points$lng,
-                         lat = points$lat,
-                         n_trials = points$Nex,
-                         n_positive = points$Npos
-                       ),
-                       request_parameters = list(threshold = input$threshold /
-                                                   100)
+                       point_data = geojson_list(combined_data_sf),
+                       exceedance_threshold = input$threshold /
+                                                   100,
+                       layer_names = c("elev_m",
+                                       "dist_to_water_m",
+                                       "bioclim1",
+                                       "bioclim4")
                      )
                    
                    # Make call to algorithm
                    print("Making request")
-                   
-                   response <-  httr::POST(url = "http://srv.tmpry.com:8080/function/fn-hotspot-gears_0-0-2",
+                   response <-  httr::POST(#url = "https://faas.srv.disarm.io/function/fn-prevalence-predictor",
+                                           url = "https://en78kgdav9wd.x.pipedream.net",
                                            body = toJSON(input_data_list),
                                            content_type_json())
                    
@@ -183,8 +188,12 @@ shinyServer(function(input, output) {
   })
   
   output$hotspot_map <- renderLeaflet({
-    if (is.null(map_data())) {
-      return(map %>% setView(0, 0, zoom = 2))
+    # if (is.null(map_data())) {
+    #   return(map %>% setView(0, 0, zoom = 2))
+    # }
+    
+    if(input$get_predictions[1]==0){
+      return(map %>% setView(0,0,zoom=2))
     }
     
     # Define color palette

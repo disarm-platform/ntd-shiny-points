@@ -61,13 +61,17 @@ dashboardPage(
                                sliderInput("threshold", "Set hotspot prevalence threshold",
                                     min=0.1, max=100, value=10, round=TRUE)),
                  
-                        column(width=4,
+                        column(width=3,
                         fileInput("File", "Survey data")),
-                        column(width=4,
+                        column(width=3,
                         fileInput("predFile", "Prediction locations")),
+                        column(width=2, actionButton("get_predictions", "Get predictions")),
+                 
+                 conditionalPanel(condition = "input.get_predictions > 0",
+                                  column(width=12, h3("Download results"),
+                                         downloadButton("downloadData", "Download predictions")))),
                         
-                        column(width=12, h3("Outputs"),
-                        downloadButton("downloadData", "Download predictions"))),
+
             
              
              tabBox(width = 12, height = 1200,
@@ -91,9 +95,18 @@ dashboardPage(
                     
                     tabPanel(title = strong("Adaptive sampling"),
 
-                              box(h4(p('The ', strong('Adaptive sampling'), 'tab provides guidance on where to survey next in order to survey 
-                                              a village that will provide the most valuable data.')), width = 12),
+                            box(h4(p('The ', strong('Adaptive sampling'), "tab provides guidance on where to survey next in order 
+                                       to maximize hotspot prediction accuracy. Choose the number of sites to select and hit 'Get locations'")),
                              
+                             column(width=8,sliderInput("Batch size", 
+                                             "Select number of sites to adaptively select",
+                                             min = 0, max= 100, value=50)),
+                             column(width=4, actionButton("get_adaptive_samples", "Get locations")),
+                             
+                             conditionalPanel(condition = "input.get_adaptive_samples > 0",
+                                              column(width=12, h4("Download table of locations"),
+                                                     downloadButton("downloadAdaptiveSamples", "Download adaptive samples"))),
+                             width = 12),
                              box(leafletOutput("prob_map", height = 800), width = 8),
                              box(DT::DTOutput('pred_table'), width = 3)),
                     
