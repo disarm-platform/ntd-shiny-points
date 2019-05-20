@@ -57,15 +57,17 @@ dashboardPage(
                  #            href="https://www.dropbox.com/s/tn4lmpvlgubtrey/Sm_cdi_villages.csv?dl=1"),
                  #          target="_blank"), 
                  
-                        column(width=4,
+                        column(width=3,
                                sliderInput("threshold", "Set hotspot prevalence threshold",
                                     min=0.1, max=100, value=10, round=TRUE)),
-                 
+                        column(width=3,sliderInput("batch_size", 
+                                            "Select number of sites to adaptively select",
+                                            min = 0, max= 100, value=50)),
                         column(width=3,
                         fileInput("File", "Survey data")),
                         column(width=3,
                         fileInput("predFile", "Prediction locations")),
-                        column(width=2, actionButton("get_predictions", "Get predictions")),
+                        column(width=2, actionButton("get_predictions", "Get results")),
                  
                  conditionalPanel(condition = "input.get_predictions > 0",
                                   column(width=12, h3("Download results"),
@@ -93,22 +95,22 @@ dashboardPage(
                                              min = 0, max= 100, value=50, post = "%"), width = 3),
                              box(DT::DTOutput('hotspot_table'), width = 3)),
                     
-                    tabPanel(title = strong("Adaptive sampling"),
-
-                            box(h4(p('The ', strong('Adaptive sampling'), "tab provides guidance on where to survey next in order 
-                                       to maximize hotspot prediction accuracy. Choose the number of sites to select and hit 'Get locations'")),
-                             
-                             column(width=8,sliderInput("Batch size", 
-                                             "Select number of sites to adaptively select",
-                                             min = 0, max= 100, value=50)),
-                             column(width=4, actionButton("get_adaptive_samples", "Get locations")),
-                             
-                             conditionalPanel(condition = "input.get_adaptive_samples > 0",
-                                              column(width=12, h4("Download table of locations"),
-                                                     downloadButton("downloadAdaptiveSamples", "Download adaptive samples"))),
-                             width = 12),
-                             box(leafletOutput("prob_map", height = 800), width = 8),
-                             box(DT::DTOutput('pred_table'), width = 3)),
+                    # tabPanel(title = strong("Adaptive sampling"),
+                    # 
+                    #         box(h4(p('The ', strong('Adaptive sampling'), "tab provides guidance on where to survey next in order 
+                    #                    to maximize hotspot prediction accuracy. Choose the number of sites to select and hit 'Get locations'")),
+                    #          
+                    #          column(width=8,sliderInput("Batch size", 
+                    #                          "Select number of sites to adaptively select",
+                    #                          min = 0, max= 100, value=50)),
+                    #          column(width=4, actionButton("get_adaptive_samples", "Get locations")),
+                    #          
+                    #          conditionalPanel(condition = "input.get_adaptive_samples > 0",
+                    #                           column(width=12, h4("Download table of locations"),
+                    #                                  downloadButton("downloadAdaptiveSamples", "Download adaptive samples"))),
+                    #          width = 12),
+                    #          box(leafletOutput("prob_map", height = 800), width = 8),
+                    #          box(DT::DTOutput('pred_table'), width = 3)),
                     
                     tabPanel(title = strong("Methods"),
                              
@@ -143,11 +145,11 @@ dashboardPage(
                                  plotOutput("posterior"),
                                  width = 12),
                              
-                             br(h4('We can also use the uncertainty estimates to identify where the model is least sure about whether 
+                             br(br(br(h4('We can also use the uncertainty estimates to identify where the model is least sure about whether 
                                         that location is a hotspot or not. In situations where field teams will be conducting more surveys,
                                        it makes sense to direct teams to those locations in order to improve the hotspot map. Computerized 
                                        simulations have shown that selecting survey locations in this way, as opposed to randomly, allows 
-                                       the geospatial models to perform better, improving the certainty we have in the predictions.')),
+                                       the geospatial models to perform better, improving the certainty we have in the predictions.')))),
                              width = 12)
                     )
                     

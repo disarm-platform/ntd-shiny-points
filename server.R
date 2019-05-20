@@ -123,29 +123,35 @@ shinyServer(function(input, output) {
                    result <<-
                      rjson::fromJSON(json_response) # this will put the response in a useful format
                    
-
-                   # Define SpatialPoints
-                   sp_points <-
-                     SpatialPointsDataFrame(pred_points[,c("lng", "lat")],
-                                            data.frame(id = pred_points$ID))
-
+                   result_sf <- st_read(result) 
                    
-                   # create spdf
-                   spdf_data <-
-                     data.frame(
-                       probability = result$estimates$exceedance_prob,
-                       id = result$estimates$id,
-                       class = result$estimates$category
-                     )
+                   # Get adaptive sampling recommendations
+                   input_data_list_adaptive <- list(
+                     point_data = geojson_list(result_sf),
+                     uncertainty_fieldname = exceedance_uncertainty,
+                     batch_size = input$batch_size
+                   )
                    
-                   # Merge
-                   sp_points_df <- merge(sp_points, spdf_data, by="id")
+                   adaptive_sampling_response <-  httr::POST(#url = "https://faas.srv.disarm.io/function/fn-prevalence-predictor",
+                     url = "https://en78kgdav9wd.x.pipedream.net",
+                     body = toJSON(input_data_list_adaptive),
+                     content_type_json())
+                   
+                   # parse result
+                   json_response_adaptive <-
+                     httr::content(adaptive_sampling_response, as = 'text') # this extracts the response from the request object
+                   
+                   result_adaptive <<-
+                     rjson::fromJSON(json_response_adaptive) # this will put the response in a useful format
+                   
+                   result_adaptive_sf <- st_read(result_adaptive) 
+
                    
                    return(
                      list(
                        points = points,
-                       pred_points = pred_points,
-                       sp_points_df = sp_points_df
+                       result_sf = result_sf,
+                       result_adaptive_sf = result_adaptive_sf
                      )
                    )
                  })
@@ -157,7 +163,7 @@ shinyServer(function(input, output) {
     }
     #uncertainty <- abs(map_data()$sp_points_df$probability - 0.5)
     output_table <-
-      map_data()$sp_points_df@data[rev(order(map_data()$sp_points_df$probability)),][, 1:2]
+      map_data()$result_sf[rev(order(map_data()$result_sf$exceedance_probability)),][, 1:2]
     output_table[, 2] <- round(output_table[, 2], 2)
     names(output_table) <-
       c("Location ID", "Probability of being a hotspot")
@@ -171,8 +177,8 @@ shinyServer(function(input, output) {
       return(NULL)
     }
     hotspot_index <-
-      which(map_data()$sp_points_df$probability >= input$prob_threshold / 100)
-    hotspot_table <- map_data()$sp_points_df@data[hotspot_index, 1:2]
+      which(map_data()$result_sf$exceedance_probability >= input$prob_threshold / 100)
+    hotspot_table <- map_data()$result_sf[hotspot_index, 1:2]
     hotspot_table[, 2] <- round(hotspot_table[, 2], 2)
     names(hotspot_table) <-
       c("Location ID", "Probability of being a hotspot")
@@ -203,20 +209,20 @@ shinyServer(function(input, output) {
     
     labels <- sprintf(
       "<strong>%s</strong><br/>Hotspot probability %g",
-      map_data()$sp_points_df$id,
-      round(map_data()$sp_points_df$probability, 3)
+      map_data()$result_sf$id,
+      round(map_data()$result_sf$exceedance_probability, 3)
     ) %>% lapply(htmltools::HTML)
     
     # Map
     hotspot_class <-
-      ifelse(map_data()$sp_points_df$probability >= input$prob_threshold / 100,
+      ifelse(map_data()$result_sf$exceedance_probability >= input$prob_threshold / 100,
              1,
              0)
     
     map %>% 
       
     addCircleMarkers(    
-        data = map_data()$sp_points_df,
+        data = map_data()$result_sf,
         color = pal(hotspot_class),
         fillOpacity = 0.6,
         weight = 1,
@@ -289,7 +295,6 @@ shinyServer(function(input, output) {
   
   output$posterior <- renderPlot({
 
-    
     threshold <- input$post_threshold
     
     set.seed(1981)
