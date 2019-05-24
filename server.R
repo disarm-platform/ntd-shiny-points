@@ -13,6 +13,7 @@ library(DT)
 library(ggplot2)
 library(geoR)
 library(sf)
+library(RJSONIO)
 
 
 # Define map
@@ -25,12 +26,12 @@ shinyServer(function(input, output) {
   
   map_data <- eventReactive(input$get_predictions, {
     inFile <- input$File
-    inFile_pred <- input$predFile
+    #inFile_pred <- input$predFile
     if (is.null(inFile))
       return(NULL)
     
-    if (is.null(inFile_pred))
-      return(NULL)
+    # if (is.null(inFile_pred))
+    #   return(NULL)
     
     
     # Give loading bar
@@ -38,73 +39,88 @@ shinyServer(function(input, output) {
                  detail = 'Crunching data..',
                  value = 5,
                  {
+                   
                    points <- read.csv(inFile$datapath)
-                   pred_points <- read.csv(inFile_pred$datapath)
+                   #pred_points <- read.csv(inFile_pred$datapath)
+                   
+                   # Change IDs to characters in case they come in as levels
+                   points$id <- as.character(points$id)
+                   #pred_points$ID <- as.character(pred_points$ID)
                    
                    # If pred_points IDs are not unique, then make them
-                   if(length(unique(pred_points$ID))!=nrow(pred_points)){
+                   if(length(unique(points$id))!=nrow(points)){
                      
-                     pred_points$ID <- paste0(pred_points$ID, 1:nrow(pred_points))
+                     points$id <- paste0(points$id, "_", 1:nrow(points))
+                     showNotification(paste("Renamed IDs as duplicates were found"))
                    }
                    
                    # Check for any missing data in survey data
-                   if(sum(!complete.cases(points))>0){
-                  
-                     showNotification(paste("Removed", sum(!complete.cases(points)), "survey points with missing data"))
-                     points <- points[complete.cases(points),]
-                   }
+                   # if(sum(!complete.cases(points))>0){
+                   # 
+                   #   showNotification(paste("Removed", sum(!complete.cases(points)), "survey points with missing data"))
+                   #   points <- points[complete.cases(points),]
+                   # }
                    
-                   if(sum(points$Nex==0)>0){
+                   if(sum(points$n_trials==0, na.rm=T)>0){
                      
-                     showNotification(paste("Removed", sum(points$Nex==0), "survey points with 0 individuals examined"))
-                     points <- points[-which(points$Nex==0),]
+                     showNotification(paste("Removed", sum(points$n_trials==0), "survey points with 0 individuals examined"))
+                     points <- points[-which(points$n_trials==0),]
                    }
                    
                    #Check for missing or duplicate coords in pred data
-                   if(sum(is.na(pred_points$lng))>0){
+                   if(sum(is.na(points$lng))>0){
                      
-                     showNotification(paste("Removed", sum(is.na(pred_points$lng)), "prediction points with missing coordinates"))
-                     pred_points <- pred_points[complete.cases(pred_points),]
+                     showNotification(paste("Removed", sum(is.na(points$lng)), "points with missing coordinates"))
+                     points <- points[complete.cases(points$lng),]
                    }
                    
-                   dups <- dup.coords(pred_points[,c("lng", "lat")])
+                   dups <- dup.coords(points[,c("lng", "lat")])
                    if(length(dups)>0){
                      
                      drop <- unlist(sapply(dups, function(x){as.numeric(x[-1])}))
-                     pred_points <- pred_points[-drop,]
+                     points <- points[-drop,]
                      
-                     showNotification(paste("Removed", length(drop), "prediction points with duplicate coordinates"))
+                     showNotification(paste("Removed", length(drop), "points with duplicate coordinates"))
                      
                    }
                    
+                   # if(sum(points$ID %in% pred_points$ID) > 0){
+                   #   pred_points$ID <- paste0("_", pred_points$ID)
+                   #   #showNotification(paste("Duplicate IDs in observations and prediction points."))
+                   # }
+                   
                    # Combine observation and prediction points
                    # into single sf object
-                   combined_data <- data.frame(lng = c(points$lng, pred_points$lng),
-                                               lat = c(points$lat, pred_points$lat),
-                                               n_trials = c(points$Nex, rep(NA, nrow(pred_points))),
-                                               n_positive = c(points$Npos, rep(NA, nrow(pred_points))))
+                   # combined_data <- data.frame(lng = c(points$lng, pred_points$lng),
+                   #                             lat = c(points$lat, pred_points$lat),
+                   #                             n_trials = c(points$n_trials, rep(NA, nrow(pred_points))),
+                   #                             n_positive = c(points$n_positive, rep(NA, nrow(pred_points))),
+                   #                             id = c(points$ID, pred_points$ID))
                    
-                   combined_data_sf <- st_as_sf(SpatialPointsDataFrame(SpatialPoints(combined_data[,c("lng", "lat")]),
-                                                                       combined_data[,c("n_trials", "n_positive")]))
+                   points_sf <- st_as_sf(SpatialPointsDataFrame(SpatialPoints(points[,c("lng", "lat")]),
+                                                                       points[,c("n_trials", "n_positive", "id")]))
                    
                    
                    # Prepare input as JSON
                    input_data_list <-
                      list(
-                       point_data = geojson_list(combined_data_sf),
+                       point_data = geojson_list(points_sf),
                        exceedance_threshold = input$threshold /
                                                    100,
                        layer_names = c("elev_m",
                                        "dist_to_water_m",
                                        "bioclim1",
-                                       "bioclim4")
+                                       "bioclim4",
+                                       "bioclim12",
+                                       "bioclim15")
                      )
+                   
                    
                    # Make call to algorithm
                    print("Making request")
-                   response <-  httr::POST(#url = "https://faas.srv.disarm.io/function/fn-prevalence-predictor",
-                                           url = "https://en78kgdav9wd.x.pipedream.net",
-                                           body = toJSON(input_data_list),
+                   response <-  httr::POST(url = "https://faas.srv.disarm.io/function/fn-prevalence-predictor",
+                                           #url = "https://enflaqfc4jbk.x.pipedream.net",
+                                           body = RJSONIO::toJSON(input_data_list, .na="null"),
                                            content_type_json())
                    
                    print("Got response")
@@ -120,20 +136,24 @@ shinyServer(function(input, output) {
                    json_response <-
                      httr::content(response, as = 'text') # this extracts the response from the request object
                    
-                   result <<-
+                   result <-
                      rjson::fromJSON(json_response) # this will put the response in a useful format
                    
-                   result_sf <- st_read(result) 
-                   
+                   result_sf <- st_read(as.json(result$result))
+                  
+                   # Add ID column back
+                   result_sf$id <- points_sf$id
+                   result_sf <<- result_sf
+
                    # Get adaptive sampling recommendations
                    input_data_list_adaptive <- list(
                      point_data = geojson_list(result_sf),
-                     uncertainty_fieldname = exceedance_uncertainty,
+                     uncertainty_fieldname = "exceedance_uncertainty",
                      batch_size = input$batch_size
                    )
                    
-                   adaptive_sampling_response <-  httr::POST(#url = "https://faas.srv.disarm.io/function/fn-prevalence-predictor",
-                     url = "https://en78kgdav9wd.x.pipedream.net",
+                   adaptive_sampling_response <-  httr::POST(
+                     url = "https://faas.srv.disarm.io/function/fn-adaptive-sampling",
                      body = toJSON(input_data_list_adaptive),
                      content_type_json())
                    
@@ -141,10 +161,10 @@ shinyServer(function(input, output) {
                    json_response_adaptive <-
                      httr::content(adaptive_sampling_response, as = 'text') # this extracts the response from the request object
                    
-                   result_adaptive <<-
+                   result_adaptive <-
                      rjson::fromJSON(json_response_adaptive) # this will put the response in a useful format
                    
-                   result_adaptive_sf <- st_read(result_adaptive) 
+                   result_adaptive_sf <<- st_read(as.json(result_adaptive))
 
                    
                    return(
@@ -163,11 +183,12 @@ shinyServer(function(input, output) {
     }
     #uncertainty <- abs(map_data()$sp_points_df$probability - 0.5)
     output_table <-
-      map_data()$result_sf[rev(order(map_data()$result_sf$exceedance_probability)),][, 1:2]
+      as.data.frame(map_data()$result_adaptive_sf)[,c("id", "exceedance_probability")]
     output_table[, 2] <- round(output_table[, 2], 2)
     names(output_table) <-
       c("Location ID", "Probability of being a hotspot")
-    DT::datatable(output_table,
+    DT::datatable(caption = "Recommended survey points",
+                  output_table,
                   options = list(pageLength = 10),
                   rownames = F)
   })
@@ -178,11 +199,12 @@ shinyServer(function(input, output) {
     }
     hotspot_index <-
       which(map_data()$result_sf$exceedance_probability >= input$prob_threshold / 100)
-    hotspot_table <- map_data()$result_sf[hotspot_index, 1:2]
+    hotspot_table <- as.data.frame(map_data()$result_sf)[hotspot_index, c("id", "exceedance_probability")]
     hotspot_table[, 2] <- round(hotspot_table[, 2], 2)
     names(hotspot_table) <-
       c("Location ID", "Probability of being a hotspot")
     DT::datatable(
+      caption = "Predictions",
       hotspot_table,
       options = list(pageLength = 10,
                      columnDefs = list(
@@ -207,6 +229,11 @@ shinyServer(function(input, output) {
       colorNumeric(wes_palette("Zissou1", 10, type = "continuous")[1:10],
                    seq(0, 1, 0.01))
     
+    prev <- map_data()$points$n_positive / map_data()$points$n_trials
+    prev_pal <- 
+      colorNumeric(wes_palette("Zissou1", 10, type = "continuous")[1:10],
+                   prev, na.color = NA)
+    
     labels <- sprintf(
       "<strong>%s</strong><br/>Hotspot probability %g",
       map_data()$result_sf$id,
@@ -226,72 +253,93 @@ shinyServer(function(input, output) {
         color = pal(hotspot_class),
         fillOpacity = 0.6,
         weight = 1,
-        radius = 4) %>%
+        radius = 4,
+        popup = map_data()$result_sf$id,
+        group = "Hotspot predictions") %>%
       
       addCircleMarkers(
-        map_data()$points$lng,
-        map_data()$points$lat,
-        group = "Survey points",
-        col = "black",
-        radius = 2
+        map_data()$points$lng[!is.na(map_data()$points$n_trials)],
+        map_data()$points$lat[!is.na(map_data()$points$n_trials)],
+        group = "Initial survey points",
+        col = prev_pal(prev),
+        radius = 2,
+        popup = map_data()$points$id
+      ) %>%
+      
+      addCircleMarkers(
+        data = map_data()$result_adaptive_sf,
+        group = "Recommended survey points",
+        col = "green",
+        radius = 3,
+        popup = map_data()$result_adaptive_sf$id
       ) %>%
       
       addLegend(colors = pal(c(0, 1)),
-                labels = c("Not hotspot", "Hotspot")) %>%
+                labels = c("Not hotspot", "Hotspot"),
+                group = "Hotspot predictions") %>%
       
-      addLayersControl(overlayGroups = c("Survey points"),
-                       options = layersControlOptions(collapsed = F))
+      addLegend(pal = prev_pal,
+                values = prev,
+                group = "Initial survey points",
+                title = "Prevalence") %>%
+      
+      addLayersControl(overlayGroups = c("Initial survey points",
+                                      "Hotspot predictions",
+                                      "Recommended survey points"),
+                       options = layersControlOptions(collapsed = F)) %>%
+      
+      hideGroup( c("Initial survey points",
+                   "Recommended survey points"))
   })
   
-  output$prob_map <- renderLeaflet({
-    if (is.null(map_data())) {
-      return(map %>% setView(0, 0, zoom = 2))
-    }
+  # output$prob_map <- renderLeaflet({
+  #   if (is.null(map_data())) {
+  #     return(map %>% setView(0, 0, zoom = 2))
+  #   }
+  #   
+  #   # Define color palette
+  #   pal <-
+  #     colorNumeric(wes_palette("Zissou1", 10, type = "continuous")[1:10],
+  #                  seq(0, 1, 0.01))
+  #   
+  #   # define uncertainty
+  #   uncertainty <- map_data()$result_sf$exceedance_uncertainty
+  #   
+  #   # map
+  #   labels <- sprintf(
+  #     "<strong>%s</strong><br/>Hotspot probability %g",
+  #     map_data()$result_sf$id,
+  #     round(map_data()$result_sf$exceedance_probability, 3)
+  #   ) %>% lapply(htmltools::HTML)
+  #   
+  #   map %>% 
+  #     
+  #     addCircleMarkers(    
+  #       data = map_data()$result_sf,
+  #       color = pal(map_data()$result_sf$exceedance_probability),
+  #       fillOpacity = 0.6,
+  #       weight = 1,
+  #       radius = 4) %>%
+  #     
+  #     addCircleMarkers(
+  #       data = map_data()$result_adaptive_sf,
+  #       group = "Adaptively selected survey points",
+  #       col = "green",
+  #       radius = 3
+  #     ) %>%
+  #     
+  #     addLegend(
+  #       colors = wes_palette("Zissou1", 10, type = "continuous")[1:10],
+  #       labels = seq(0.1, 1, 0.1),
+  #       title = "Hotspot probability"
+  #     ) %>%
+  #     
+  #     addLayersControl(
+  #       overlayGroups = c("Adaptively selected survey points"),
+  #       options = layersControlOptions(collapsed = F)
+  #     )
     
-    # Define color palette
-    pal <-
-      colorNumeric(wes_palette("Zissou1", 10, type = "continuous")[1:10],
-                   seq(0, 1, 0.01))
-    
-    # define uncertainty
-    uncertainty <- abs(map_data()$sp_points_df$probability - 0.5)
-    
-    # map
-    labels <- sprintf(
-      "<strong>%s</strong><br/>Hotspot probability %g",
-      map_data()$sp_points_df$id,
-      round(map_data()$sp_points_df$probability, 3)
-    ) %>% lapply(htmltools::HTML)
-    
-    map %>% 
-      
-      addCircleMarkers(    
-        data = map_data()$sp_points_df,
-        color = pal(map_data()$sp_points_df$probability),
-        fillOpacity = 0.6,
-        weight = 1,
-        radius = 4) %>%
-      
-      addCircleMarkers(
-        map_data()$points$lng,
-        map_data()$points$lat,
-        group = "Survey points",
-        col = "black",
-        radius = 2
-      ) %>%
-      
-      addLegend(
-        colors = wes_palette("Zissou1", 10, type = "continuous")[1:10],
-        labels = seq(0.1, 1, 0.1),
-        title = "Hotspot probability"
-      ) %>%
-      
-      addLayersControl(
-        overlayGroups = c("Survey points"),
-        options = layersControlOptions(collapsed = F)
-      )
-    
-  }) # end loading bar
+  #}) # end loading bar
   
   output$posterior <- renderPlot({
 
@@ -336,9 +384,38 @@ shinyServer(function(input, output) {
       paste("predictions.csv")
     },
     content = function(file) {
-      download_table <- map_data()$sp_points_df@data
-      names(download_table)[2] <- "Hotspot probability" 
-      write.csv(map_data()$sp_points_df@data, file, row.names = FALSE)
+      #download_table <- as.data.frame(st_read(as.json(result$result)))
+      download_table <- as.data.frame(result_sf)
+      #names(download_table)[2] <- "Hotspot probability" 
+      write.csv(download_table, file, row.names = FALSE)
+    }
+  )
+  
+  output$downloadGeoData <- downloadHandler(
+    filename = function() {
+      paste("predictions.geojson")
+    },
+    content = function(file) {
+      st_write(result_sf, file)
+    }
+  )
+  
+  output$downloadAdaptiveData <- downloadHandler(
+    filename = function() {
+      paste("adaptive_samples.csv")
+    },
+    content = function(file) {
+      download_table_adaptive <- as.data.frame(result_adaptive_sf)
+      write.csv(download_table_adaptive, file, row.names = FALSE)
+    }
+  )
+  
+  output$downloadAdaptiveGeoData <- downloadHandler(
+    filename = function() {
+      paste("adaptive_samples.geojson")
+    },
+    content = function(file) {
+      st_write(result_adaptive_sf, file)
     }
   )
   

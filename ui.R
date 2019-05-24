@@ -1,8 +1,7 @@
 library(leaflet)
 library(lubridate)
 library(shinyBS)
-
-
+library(geojsonio)
 library(shinydashboard)
 
 dashboardPage(
@@ -64,50 +63,60 @@ dashboardPage(
                                             "Select number of sites to adaptively select",
                                             min = 0, max= 100, value=50)),
                         column(width=3,
-                        fileInput("File", "Survey data")),
-                        column(width=3,
-                        fileInput("predFile", "Prediction locations")),
-                        column(width=2, actionButton("get_predictions", "Get results")),
-                 
-                 conditionalPanel(condition = "input.get_predictions > 0",
-                                  column(width=12, h3("Download results"),
-                                         downloadButton("downloadData", "Download predictions")))),
-                        
+                        fileInput("File", "Points")),
+                        #column(width=3,
+                        #fileInput("predFile", "Prediction locations")),
+                        column(width=3, actionButton("get_predictions", "Get results"))
 
+                 ),
             
              
-             tabBox(width = 12, height = 1200,
+             tabBox(width = 12, height = 1800,
                     tabPanel(title = strong("Hotspots"), width = 12, 
                              
                              box(
+                               column(
                                 h4(p('The', strong('Hotspots'), 'tab allows hotspot villages to be identified by choosing the predicted 
                                 probability that a village is a hotspot (i.e. where infection/sero prevalence 
                                is greater than the threshold set using the slider above). For example, if the slider is at 50%, the map will show all those
                                villages where the probability the village is a hotspot is at least 50%. For a more conservative
                                estimate of hotspots, a lower threshold can be used. For example, a program might be willing to 
                                classify a village as a hotspot if the model is only 30% sure the village is actually a hotspot. 
-                               In that case, the slider should be moved to 30% and the map and table will update.')), width = 12),
+                               In that case, the slider should be moved to 30% and the map and table will update.')), width = 8),
+                                
+                              column(sliderInput("prob_threshold", 
+                                                "Select areas where the probability of being a hotspot is at least",
+                                                min = 0, max= 100, value=50, post = "%"), width = 4),
+                                     
+                                     width = 12),
                              
                              
-                             box(leafletOutput("hotspot_map", height = 800), width = 8),
-                             box(sliderInput("prob_threshold", 
-                                             "Select areas where the probability of being a hotspot is at least",
-                                             min = 0, max= 100, value=50, post = "%"), width = 3),
-                             box(DT::DTOutput('hotspot_table'), width = 3)),
+                             box(leafletOutput("hotspot_map", height = 700, width="100%"), width=12),
+
+                             box(DT::DTOutput('hotspot_table'), 
+                                 conditionalPanel(condition = "input.get_predictions > 0",
+                                                         downloadButton("downloadData", "Download as table"),
+                                                         downloadButton("downloadGeoData", "Download as GeoJSON")),
+                                 width = 6), 
+                             box(DT::DTOutput('pred_table'), 
+                                 conditionalPanel(condition = "input.get_predictions > 0",
+                                                  downloadButton("downloadAdaptiveData", "Download as table"),
+                                                  downloadButton("downloadAdaptiveGeoData", "Download as GeoJSON")),
+                                 width = 6)),
                     
                     # tabPanel(title = strong("Adaptive sampling"),
                     # 
-                    #         box(h4(p('The ', strong('Adaptive sampling'), "tab provides guidance on where to survey next in order 
+                    #         box(h4(p('The ', strong('Adaptive sampling'), "tab provides guidance on where to survey next in order
                     #                    to maximize hotspot prediction accuracy. Choose the number of sites to select and hit 'Get locations'")),
-                    #          
-                    #          column(width=8,sliderInput("Batch size", 
-                    #                          "Select number of sites to adaptively select",
-                    #                          min = 0, max= 100, value=50)),
-                    #          column(width=4, actionButton("get_adaptive_samples", "Get locations")),
-                    #          
-                    #          conditionalPanel(condition = "input.get_adaptive_samples > 0",
-                    #                           column(width=12, h4("Download table of locations"),
-                    #                                  downloadButton("downloadAdaptiveSamples", "Download adaptive samples"))),
+                    # 
+                    #          # column(width=8,sliderInput("Batch size",
+                    #          #                 "Select number of sites to adaptively select",
+                    #          #                 min = 0, max= 100, value=50)),
+                    #          # column(width=4, actionButton("get_adaptive_samples", "Get locations")),
+                    #          # 
+                    #          # conditionalPanel(condition = "input.get_adaptive_samples > 0",
+                    #          #                  column(width=12, h4("Download table of locations"),
+                    #          #                         downloadButton("downloadAdaptiveSamples", "Download adaptive samples"))),
                     #          width = 12),
                     #          box(leafletOutput("prob_map", height = 800), width = 8),
                     #          box(DT::DTOutput('pred_table'), width = 3)),
@@ -116,8 +125,7 @@ dashboardPage(
                              
                              box(h4(p("UNDER CONSTRUCTION"),
                                     
-                                    br('The outputs shown in the', strong('Hotspots'), 'tab and the',
-                                       strong('Adaptive sampling'), 'tab both come from the same geospatial model. The model works by
+                                    br('The outputs shown in the', strong('Hotspots'), 'tab come from a geospatial model. The model works by
                                        characterizing the relationship between the observed prevalence values (numbers positive/numbers tested) 
                                        at each location and the climatological/enviromnetal conditions at those locations. For example, if we were just to 
                                        use temperature and elevation, the model would establish what, if any, relationship there is between prevalence
