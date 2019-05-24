@@ -15,6 +15,7 @@ library(geoR)
 library(sf)
 library(RJSONIO)
 
+run_checks <- dget("preprocess.R")
 
 # Define map
 map <- leaflet(max) %>%
@@ -39,64 +40,20 @@ shinyServer(function(input, output) {
                  detail = 'Crunching data..',
                  value = 5,
                  {
-                   
+
                    points <- read.csv(inFile$datapath)
                    #pred_points <- read.csv(inFile_pred$datapath)
+                   
+                   # Run checks
+                   run_checks(points)
                    
                    # Change IDs to characters in case they come in as levels
                    points$id <- as.character(points$id)
                    #pred_points$ID <- as.character(pred_points$ID)
                    
-                   # If pred_points IDs are not unique, then make them
-                   if(length(unique(points$id))!=nrow(points)){
-                     
-                     points$id <- paste0(points$id, "_", 1:nrow(points))
-                     showNotification(paste("Renamed IDs as duplicates were found"))
-                   }
+
                    
-                   # Check for any missing data in survey data
-                   # if(sum(!complete.cases(points))>0){
-                   # 
-                   #   showNotification(paste("Removed", sum(!complete.cases(points)), "survey points with missing data"))
-                   #   points <- points[complete.cases(points),]
-                   # }
-                   
-                   if(sum(points$n_trials==0, na.rm=T)>0){
-                     
-                     showNotification(paste("Removed", sum(points$n_trials==0), "survey points with 0 individuals examined"))
-                     points <- points[-which(points$n_trials==0),]
-                   }
-                   
-                   #Check for missing or duplicate coords in pred data
-                   if(sum(is.na(points$lng))>0){
-                     
-                     showNotification(paste("Removed", sum(is.na(points$lng)), "points with missing coordinates"))
-                     points <- points[complete.cases(points$lng),]
-                   }
-                   
-                   dups <- dup.coords(points[,c("lng", "lat")])
-                   if(length(dups)>0){
-                     
-                     drop <- unlist(sapply(dups, function(x){as.numeric(x[-1])}))
-                     points <- points[-drop,]
-                     
-                     showNotification(paste("Removed", length(drop), "points with duplicate coordinates"))
-                     
-                   }
-                   
-                   # if(sum(points$ID %in% pred_points$ID) > 0){
-                   #   pred_points$ID <- paste0("_", pred_points$ID)
-                   #   #showNotification(paste("Duplicate IDs in observations and prediction points."))
-                   # }
-                   
-                   # Combine observation and prediction points
-                   # into single sf object
-                   # combined_data <- data.frame(lng = c(points$lng, pred_points$lng),
-                   #                             lat = c(points$lat, pred_points$lat),
-                   #                             n_trials = c(points$n_trials, rep(NA, nrow(pred_points))),
-                   #                             n_positive = c(points$n_positive, rep(NA, nrow(pred_points))),
-                   #                             id = c(points$ID, pred_points$ID))
-                   
+                   # Convert to sf object
                    points_sf <- st_as_sf(SpatialPointsDataFrame(SpatialPoints(points[,c("lng", "lat")]),
                                                                        points[,c("n_trials", "n_positive", "id")]))
                    
