@@ -13,19 +13,24 @@ dashboardPage(
       includeCSS("styles.css"),
 
              box(width = 12, 
-                 column(width=12,h3("Inputs")),
-                 #    h3("NTD mapping app"), h4(p('This application is designed to help understand whether having village level
-                 #                              predictions of hotspots is useful to NTD programs. Given an input of infection/sero 
-                 #                              prevalence at villages, and locations of all other villages, the app is designed 
-                 #                              to automatically fit a geospatial model (see',strong('Methods'), 'tab below) using 
-                 #                              climatological variables (currently 
-                 #                              temperature, precipitation and seasonality) to provide two outputs:'),
-                 #                              
-                 #                              br(tags$ol(
-                 #                                tags$li("Location of likely hotspot villages and"), 
-                 #                                tags$li("optimal location to next visit to collect more data in
-                 #                              order to update your hotspot prediction map")
-                 #                              )),
+                    h3("NTD mapping app"), p('This application is designed to help understand whether having village level
+                                              predictions of hotspots is useful to NTD programs. Given an input of infection/sero
+                                              prevalence at villages, and locations of all other villages, the app is designed
+                                              to automatically fit a geospatial model (see',strong('Methods'), 'tab below) using
+                                              climatological/environmenal variables (currently elevation, distance to water,
+                                              temperature, precipitation and seasonality) to provide two outputs:'),
+
+                                              br(tags$ol(
+                                                tags$li("Location of likely hotspot villages and"),
+                                                tags$li("Optimal locations to next visit to collect more data in
+                                              order to update your hotspot prediction map")
+                                              )),
+                 
+                                            p('See', a("here", 
+                                                       href="https://github.com/HughSt/ntd-shiny-points/blob/master/README.md"), 
+                                              'for more detailed instructions on how to use the app and', a("here", 
+                                                       href="https://www.dropbox.com/s/l6t9cx51805to7n/Sh_liberia_withNA.csv?dl=1"),
+                                              'for a demo dataset of schistosomiasis in Liberia.'),
                  #                              
                  #                              
                  #                              p("To test the app, you can download the 
@@ -55,7 +60,7 @@ dashboardPage(
                  # helpText(a("Demo village data",     
                  #            href="https://www.dropbox.com/s/tn4lmpvlgubtrey/Sm_cdi_villages.csv?dl=1"),
                  #          target="_blank"), 
-                 
+                        column(width=12,h4("Inputs")),
                         column(width=3,
                                sliderInput("threshold", "Set hotspot prevalence threshold",
                                     min=0.1, max=100, value=10, round=TRUE)),
@@ -64,8 +69,7 @@ dashboardPage(
                                             min = 0, max= 100, value=50)),
                         column(width=3,
                         fileInput("File", "Points")),
-                        #column(width=3,
-                        #fileInput("predFile", "Prediction locations")),
+
                         column(width=3, actionButton("get_predictions", "Get results"))
 
                  ),
@@ -76,13 +80,13 @@ dashboardPage(
                              
                              box(
                                column(
-                                h4(p('The', strong('Hotspots'), 'tab allows hotspot villages to be identified by choosing the predicted 
+                                p('The', strong('Hotspots'), 'tab allows hotspot villages to be identified by choosing the predicted 
                                 probability that a village is a hotspot (i.e. where infection/sero prevalence 
                                is greater than the threshold set using the slider above). For example, if the slider is at 50%, the map will show all those
                                villages where the probability the village is a hotspot is at least 50%. For a more conservative
                                estimate of hotspots, a lower threshold can be used. For example, a program might be willing to 
                                classify a village as a hotspot if the model is only 30% sure the village is actually a hotspot. 
-                               In that case, the slider should be moved to 30% and the map and table will update.')), width = 8),
+                               In that case, the slider should be moved to 30% and the map and table will update.'), width = 8),
                                 
                               column(sliderInput("prob_threshold", 
                                                 "Select areas where the probability of being a hotspot is at least",
@@ -123,9 +127,9 @@ dashboardPage(
                     
                     tabPanel(title = strong("Methods"),
                              
-                             box(h4(p("UNDER CONSTRUCTION"),
+                             box(h4(p("UNDER CONSTRUCTION")),
                                     
-                                    br('The outputs shown in the', strong('Hotspots'), 'tab come from a geospatial model. The model works by
+                                    p(br('The outputs shown in the', strong('Hotspots'), 'tab come from a geospatial model. The model works by
                                        characterizing the relationship between the observed prevalence values (numbers positive/numbers tested) 
                                        at each location and the climatological/enviromnetal conditions at those locations. For example, if we were just to 
                                        use temperature and elevation, the model would establish what, if any, relationship there is between prevalence

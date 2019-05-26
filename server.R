@@ -161,7 +161,7 @@ shinyServer(function(input, output) {
     names(hotspot_table) <-
       c("Location ID", "Probability of being a hotspot")
     DT::datatable(
-      caption = "Predictions",
+      caption = "Hotspot predictions",
       hotspot_table,
       options = list(pageLength = 10,
                      columnDefs = list(
