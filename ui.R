@@ -131,7 +131,8 @@ dashboardPage(
                                     
                                     p(br('The outputs shown in the', strong('Hotspots'), 'tab come from a geospatial model. The model works by
                                        characterizing the relationship between the observed prevalence values (numbers positive/numbers tested) 
-                                       at each location and the climatological/enviromnetal conditions at those locations. For example, if we were just to 
+                                       at each location and the climatological/enviromnetal conditions (long term rainfall, temperature, seasonality,
+                                       elevation and distance to water) at those locations. For example, if we were just to 
                                        use temperature and elevation, the model would establish what, if any, relationship there is between prevalence
                                        and these two variables. For example, the model might find that higher prevalence values are found in warmer 
                                        areas with lower elevation. Once the model has quantified
@@ -149,6 +150,13 @@ dashboardPage(
                                        of 10% is more likely that a prevalence of 5%. By moving the slider, you can estimate the probability that 
                                        prevalence exceeds that value.'),
                                     
+                                    br('For the technical audience - we use the framework of stacked generalization. First, 10 fold cross validated predictions
+                                         are generated from a random forest model, modeling the binomial outcome at each site against the set of covariates listed above.
+                                         These cross-validated predictions are then included as a covariate in a geostatistical model, i.e. a logistic regression with 
+                                         a spatially structured random effect. A Matern covariance function is assumed for the spatial component. 
+                                         Realizations at every locations are then generated using conditional simulation in order to build a posterior 
+                                         distribution of prevalence values at each location.'),
+                                    
                                   
                                  br(column(width=1,""),
                                     column(width=9, 
@@ -157,11 +165,11 @@ dashboardPage(
                                  plotOutput("posterior"),
                                  width = 12),
                              
-                             br(br(br(h4('We can also use the uncertainty estimates to identify where the model is least sure about whether 
-                                        that location is a hotspot or not. In situations where field teams will be conducting more surveys,
+                             br(br(br('We can also use the uncertainty estimates to identify where the model is least sure about whether 
+                                       that location is a hotspot or not. In situations where field teams will be conducting more surveys,
                                        it makes sense to direct teams to those locations in order to improve the hotspot map. Computerized 
                                        simulations have shown that selecting survey locations in this way, as opposed to randomly, allows 
-                                       the geospatial models to perform better, improving the certainty we have in the predictions.')))),
+                                       the geospatial models to perform better, improving the certainty we have in the predictions.'))),
                              width = 12)
                     )
                     
