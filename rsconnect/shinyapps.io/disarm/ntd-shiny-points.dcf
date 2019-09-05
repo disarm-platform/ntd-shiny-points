@@ -5,9 +5,9 @@ account: disarm
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 734062
-bundleId: 2107257
+bundleId: 2161910
 url: https://disarm.shinyapps.io/ntd-shiny-points/
-when: 1558732376.26044
+when: 1560878700.72802
 asMultiple: FALSE
 asStatic: FALSE
 ignoredFiles: README.md|Sh_liberia_withNA.csv|Sh_malawi_withNA.csv

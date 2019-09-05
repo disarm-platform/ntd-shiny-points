@@ -45,7 +45,7 @@ shinyServer(function(input, output) {
                    #pred_points <- read.csv(inFile_pred$datapath)
                    
                    # Run checks
-                   run_checks(points)
+                   points <- run_checks(points)
                    
                    # Change IDs to characters in case they come in as levels
                    points$id <- as.character(points$id)
@@ -66,29 +66,22 @@ shinyServer(function(input, output) {
                                                    100,
                        layer_names = c("elev_m",
                                        "dist_to_water_m",
-                                       "bioclim1",
+                                       "bioclim1", 
                                        "bioclim4",
-                                       "bioclim12",
+                                       "bioclim12", 
                                        "bioclim15")
                      )
                    
                    
                    # Make call to algorithm
                    print("Making request")
-                   response <-  httr::POST(url = "https://faas.srv.disarm.io/function/fn-prevalence-predictor",
-                                           #url = "https://enflaqfc4jbk.x.pipedream.net",
+                   response <-  httr::POST(url = "https://faas.srv.disarm.io/function/fn-prevalence-predictor-spamm",
                                            body = RJSONIO::toJSON(input_data_list, .na="null"),
                                            content_type_json())
                    
                    print("Got response")
                    print(response$status_code)
-                   # Check it ran. If not, run again.
-                   if (response$status_code != 200) {
-                     print("Trying again")
-                     response <- request_call()
-                     print("Got second response")
-                   }
-                   
+
                    # parse result
                    json_response <-
                      httr::content(response, as = 'text') # this extracts the response from the request object
@@ -96,7 +89,7 @@ shinyServer(function(input, output) {
                    result <-
                      rjson::fromJSON(json_response) # this will put the response in a useful format
                    
-                   result_sf <- st_read(as.json(result$result))
+                   result_sf <- st_read(as.json(result$result), quiet = TRUE)
                   
                    # Add ID column back
                    result_sf$id <- points_sf$id
@@ -120,8 +113,9 @@ shinyServer(function(input, output) {
                    
                    result_adaptive <-
                      rjson::fromJSON(json_response_adaptive) # this will put the response in a useful format
-                   
-                   result_adaptive_sf <<- st_read(as.json(result_adaptive))
+
+                   result_adaptive_sf_all <- st_read(as.json(result_adaptive))
+                   result_adaptive_sf <<- result_adaptive_sf_all[which(result_adaptive_sf_all$adaptively_selected==1),]
 
                    
                    return(

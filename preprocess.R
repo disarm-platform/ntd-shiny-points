@@ -39,6 +39,8 @@ function(points){
         showNotification(paste("Removed", length(drop), "points with duplicate coordinates"))
         
       }
+      
+      return(points)
 
 
 }
