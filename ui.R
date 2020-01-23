@@ -37,7 +37,7 @@ dashboardPage(
                              min=0.1, max=100, value=10, round=TRUE)),
           column(width=3,sliderInput("batch_size", 
                                      "Select number of sites to adaptively select",
-                                     min = 0, max= 100, value=50)),
+                                     min = 0, max= 100, value=0)),
           column(width=3,
                  fileInput("File", "Points")),
           

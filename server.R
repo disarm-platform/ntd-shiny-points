@@ -64,7 +64,6 @@ shinyServer(function(input, output) {
                                    "bioclim12", 
                                    "bioclim15")
                    
-                   
                    # Make call to algorithm
                    print("Making request")
                    result_sf <- prevalence_predictor_mgcv(point_data = point_data, 
@@ -87,18 +86,25 @@ shinyServer(function(input, output) {
     if (is.null(map_data())) {
       return(NULL)
     }
-    #uncertainty <- abs(map_data()$sp_points_df$probability - 0.5)
-    output_table <-
-      as.data.frame(map_data()$result_sf)[,c("id", 
-                                             "exceedance_probability", 
-                                             "prevalence_prediction",
-                                             "adaptively_selected")]
-    output_table[, 2] <- round(output_table[, 2], 2)
+
+    output_table <- as.data.frame(map_data()$result_sf)
+    if(is.null(output_table$adaptively_selected)){
+    output_table <- output_table[,c("id", 
+                                    "exceedance_probability", 
+                                    "prevalence_prediction")]
+    }else{
+      output_table <- output_table[,c("id", 
+                                      "exceedance_probability", 
+                                      "prevalence_prediction",
+                                      "adaptively_selected")]
+    }
+
+    output_table[, 2:3] <- round(output_table[, 2:3], 2)
     names(output_table) <-
       c("Location ID", 
         "Probability of being a hotspot", 
         "Predicted prevalence",
-        "Adaptively selected")
+        "Adaptively selected")[1:ncol(output_table)]
     DT::datatable(caption = "Results",
                   output_table,
                   options = list(pageLength = 10),
