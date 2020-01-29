@@ -55,15 +55,20 @@ shinyServer(function(input, output) {
                    
                    # Prepare for function
                    exceedance_threshold = input$threshold / 100
-                   uncertainty_fieldname = "exceedance_uncertainty"
-                   batch_size = input$batch_size
+                   uncertainty_fieldname = "exceedance_probability"
+                   if(input$batch_size == 0){
+                         batch_size <- NULL
+                       }else{
+                       batch_size = input$batch_size
+                   }
                    layer_names = c("elev_m",
                                    "dist_to_water_m",
+                                   "dist_to_road_m",
                                    "bioclim1", 
                                    "bioclim4",
                                    "bioclim12", 
                                    "bioclim15")
-                   
+                 
                    # Make call to algorithm
                    print("Making request")
                    result_sf <- prevalence_predictor_mgcv(point_data = point_data, 
@@ -72,7 +77,7 @@ shinyServer(function(input, output) {
                                                           batch_size = batch_size,
                                                           uncertainty_fieldname = uncertainty_fieldname)
                    
-                   
+
                    return(
                      list(
                        points = points,
@@ -152,8 +157,10 @@ shinyServer(function(input, output) {
         group = "Hotspot predictions") %>%
       
       addCircleMarkers(
-        map_data()$points$lng[!is.na(map_data()$points$n_trials)],
-        map_data()$points$lat[!is.na(map_data()$points$n_trials)],
+        #map_data()$points$lng[!is.na(map_data()$points$n_trials)],
+        #map_data()$points$lat[!is.na(map_data()$points$n_trials)],
+        map_data()$points$lng,
+        map_data()$points$lat,
         group = "Initial survey points",
         col = prev_pal(prev),
         radius = 2,
