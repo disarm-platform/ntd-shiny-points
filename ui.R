@@ -86,16 +86,14 @@ dashboardPage(
                           
                           p(br('The outputs shown in the', strong('Hotspots'), 'tab come from a geospatial model. The model works by
                                        characterizing the relationship between the observed prevalence values (numbers positive/numbers tested) 
-                                       at each location and the climatological/enviromnetal conditions (long term rainfall, temperature, seasonality,
-                                       elevation and distance to water) at those locations. For example, if we were just to 
-                                       use temperature and elevation, the model would establish what, if any, relationship there is between prevalence
-                                       and these two variables. For example, the model might find that higher prevalence values are found in warmer 
-                                       areas with lower elevation. Once the model has quantified
-                                       these relationships, it is possible to predict prevalence anywhere where we know elevation and temperature.'),
+                                       at each location and the climatological/enviromental conditions (long term rainfall, temperature, seasonality,
+                                       elevation, distance to water and distance to road) at those locations. Once the model has established the 
+                                       relationship between prevalence and these predictors - for example, prevalence might be higher in lower, 
+                                       warmer more isolated areas - it is possible to predict prevalence anywhere where we have information on our predictors.'),
                             
                             br('Instead of just making a best guess as to what prevalence is at any given location, the model gives us a 
                                        range or distribution of possible values prevalence could take at every location. Where the model is very certain, 
-                                       this distribution will be narrow. Where the model is less certain, the distribution will be large. 
+                                       this distribution will be narrow. Where the model is less certain, the distribution will be wider. 
                                        This distribution also allows us to estimate the probability
                                        that prevalence is above or below a certain value. We can do this by looking at what proportion of the distribution 
                                        is above that threshold value. This is a nice way of using predictions as it allows us to incorporate the
@@ -110,7 +108,9 @@ dashboardPage(
                                          These cross-validated predictions are then included as a covariate in a spatial model using 
                                          a low-rank Gaussian process smooth fit using the R package mgcv.
                                          Realizations at every locations are then generated using conditional simulation in order to build a posterior 
-                                         distribution of prevalence values at each location.'),
+                                         distribution of prevalence values at each location. If adaptive sampling is required, a spatial sample of locations 
+                                         with high classification uncertainty is made using the approach as outlined', a("here.", 
+                                          href="https://www.medrxiv.org/content/10.1101/2020.01.10.20016964v1")),
                             
                             
                             br(column(width=1,""),

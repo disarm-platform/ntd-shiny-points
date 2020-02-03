@@ -71,11 +71,20 @@ shinyServer(function(input, output) {
                  
                    # Make call to algorithm
                    print("Making request")
-                   result_sf <- prevalence_predictor_mgcv(point_data = point_data, 
-                                                          layer_names = layer_names,
-                                                          exceedance_threshold = exceedance_threshold,
-                                                          batch_size = batch_size,
-                                                          uncertainty_fieldname = uncertainty_fieldname)
+                   input_data_list <- list(point_data = geojson_list(point_data),
+                                           layer_names = layer_names,
+                                           exceedance_threshold = exceedance_threshold,
+                                           batch_size = batch_size,
+                                           uncertainty_fieldname = uncertainty_fieldname)
+                   response <-
+                     httr::POST(
+                       url = 'https://faas.srv.disarm.io/function/fn-prevalence-predictor-mgcv',
+                       body = RJSONIO::toJSON(input_data_list),
+                       content_type_json(),
+                       timeout(90)
+                     )
+
+                   result_sf <- st_read(as.json(content(response)))
                    
 
                    return(
